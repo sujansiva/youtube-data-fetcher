@@ -22,11 +22,14 @@ def fetch():
     db = get_db()
 
     try:
+        last_channel = db.execute(
+            'SELECT MAX(id) FROM channels').fetchone()
+
         r = requests.get(
             f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
         body = r.json()['items'][0]
 
-        channel_id = 1
+        channel_id = last_channel[0]
         url = f'https://www.youtube.com/watch?v={video_id}'
         title = body['snippet']['title']
         view_count = body['statistics']['viewCount']
