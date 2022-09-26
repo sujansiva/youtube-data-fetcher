@@ -9,6 +9,7 @@ from app.db import get_db
 
 bp = Blueprint('video', __name__, url_prefix='/video')
 
+
 @bp.route('/fetch', methods=['POST'])
 def fetch():
     args = request.args
@@ -21,7 +22,8 @@ def fetch():
     db = get_db()
 
     try:
-        r = requests.get(f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
+        r = requests.get(
+            f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
         body = r.json()['items'][0]
 
         channel_id = 1
@@ -35,8 +37,9 @@ def fetch():
         published_date = body['snippet']['publishedAt']
 
         db.execute(
-            "INSERT INTO video (channel_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (channel_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date),
+            "INSERT INTO videos (channel_id, video_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date, latest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (channel_id, video_id, url, title, view_count, like_count,
+             comment_count, duration, image_url, published_date, 1),
         )
         db.commit()
 

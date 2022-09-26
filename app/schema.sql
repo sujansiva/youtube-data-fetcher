@@ -1,8 +1,9 @@
-DROP TABLE IF EXISTS channel;
-DROP TABLE IF EXISTS video;
+DROP TABLE IF EXISTS channels;
+DROP TABLE IF EXISTS videos;
 
-CREATE TABLE channel (
+CREATE TABLE channels (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id VARCHAR(255) NOT NULL,
   url VARCHAR(255) NOT NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL,
@@ -13,9 +14,10 @@ CREATE TABLE channel (
   creation_date TIMESTAMP NOT NULL
 );
 
-CREATE TABLE video (
+CREATE TABLE videos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   channel_id INTEGER NOT NULL,
+  video_id VARCHAR(255) NOT NULL,
   url VARCHAR(255) NOT NULL,
   title TEXT NOT NULL,
   view_count INTEGER NOT NULL,
@@ -24,5 +26,6 @@ CREATE TABLE video (
   duration TEXT NOT NULL,
   image_url VARCHAR(255),
   published_date TIMESTAMP NOT NULL,
-  FOREIGN KEY (channel_id) REFERENCES channel (id)
+  latest BOOLEAN NOT NULL,
+  FOREIGN KEY (channel_id) REFERENCES channels (id)
 );
