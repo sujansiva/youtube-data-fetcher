@@ -6,6 +6,12 @@ It is built using Flask and SQLite.
 
 To use this app, you need an API key for Youtube's Data API. Please set this API key as an environment variable with the name `YOUTUBE_API_KEY`.
 
+Please install all of the app's dependencies using the following command:
+
+```
+pip install -r requirements.txt
+```
+
 This app offers the following commands for initializing an empty database, and seeding the database:
 
 ```
