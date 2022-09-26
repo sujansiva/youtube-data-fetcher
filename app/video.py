@@ -22,14 +22,11 @@ def fetch():
     db = get_db()
 
     try:
-        last_channel = db.execute(
-            'SELECT MAX(id) FROM channels').fetchone()
-
         r = requests.get(
             f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
         body = r.json()['items'][0]
 
-        channel_id = last_channel[0]
+        youtube_channel_id = body['snippet']['channelId']
         url = f'https://www.youtube.com/watch?v={video_id}'
         title = body['snippet']['title']
         view_count = body['statistics']['viewCount']
@@ -38,6 +35,11 @@ def fetch():
         duration = body['contentDetails']['duration']
         image_url = body['snippet']['thumbnails']['default']['url']
         published_date = body['snippet']['publishedAt']
+
+        channel_row = db.execute(
+            'SELECT id FROM channels WHERE channel_id = ?', (youtube_channel_id,)).fetchone()
+
+        channel_id = channel_row[0] if channel_row is not None else 0
 
         db.execute(
             "INSERT INTO videos (channel_id, video_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date, latest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
