@@ -1,9 +1,14 @@
 import sqlite3
 import click
-import os
-import requests
 import math
 from flask import current_app, g
+
+from .utils.api import fetch_channel_data, fetch_video_data
+from .utils.db import (
+    add_channel_to_channels_table,
+    add_interactions_to_video_interactions_table,
+    add_video_to_videos_table,
+    get_pk_from_videos_table_by_video_id)
 
 
 def get_db():
@@ -39,29 +44,13 @@ def seed_db():
     seed_data_video_ids = ['tcYodQoapMg', 'r2XJ9P1NvJc', '5GJWxDKyk3A',
                            'V1Pl8CzNzCw', 'Pkh8UtuejGw', 'KkGVmN68ByU', 'tQ0yjYUFKAE', 'xFJjczkU4So']
 
-    key = os.environ.get('YOUTUBE_API_KEY')
     db = get_db()
 
     for channel_id in seed_data_channel_ids:
         try:
-            r = requests.get(
-                f'https://youtube.googleapis.com/youtube/v3/channels?part=snippet%2Cstatistics&id={channel_id}&key={key}')
-            body = r.json()['items'][0]
+            channel_data = fetch_channel_data(channel_id)
+            add_channel_to_channels_table(db, channel_id, channel_data)
 
-            url = f'https://www.youtube.com/channel/{channel_id}'
-            title = body['snippet']['title']
-            description = body['snippet']['description']
-            view_count = body['statistics']['viewCount']
-            subscriber_count = body['statistics']['subscriberCount']
-            video_count = body['statistics']['videoCount']
-            image_url = body['snippet']['thumbnails']['default']['url']
-            creation_date = body['snippet']['publishedAt']
-
-            db.execute(
-                "INSERT INTO channels (channel_id, url, title, description, view_count, subscriber_count, video_count, image_url, creation_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (channel_id, url, title, description, view_count,
-                 subscriber_count, video_count, image_url, creation_date),
-            )
             db.commit()
         except:
             return f'Could not insert data for {channel_id} into the database.'
@@ -69,34 +58,13 @@ def seed_db():
     cid = 1.0
     for video_id in seed_data_video_ids:
         try:
-            r = requests.get(
-                f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
-            body = r.json()['items'][0]
-
+            video_data = fetch_video_data(video_id)
             channel_id = int(math.floor(cid))
-            url = f'https://www.youtube.com/watch?v={video_id}'
-            title = body['snippet']['title']
-            view_count = body['statistics']['viewCount']
-            like_count = body['statistics']['likeCount']
-            comment_count = body['statistics']['commentCount']
-            duration = body['contentDetails']['duration']
-            image_url = body['snippet']['thumbnails']['default']['url']
-            published_date = body['snippet']['publishedAt']
 
-            db.execute(
-                "INSERT INTO videos (channel_id, video_id, url, title, duration, image_url, published_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (channel_id, video_id, url, title,
-                 duration, image_url, published_date),
-            )
-
-            video_result = db.execute(
-                'SELECT id FROM videos where video_id = ?', (video_id,)).fetchone()
-            video_pk = video_result[0]
-
-            db.execute(
-                "INSERT INTO video_interactions (video_id, view_count, like_count, comment_count, latest) VALUES (?, ?, ?, ?, ?)",
-                (video_pk, view_count, like_count, comment_count, 1),
-            )
+            add_video_to_videos_table(db, channel_id, video_id, video_data)
+            video_pk = get_pk_from_videos_table_by_video_id(db, video_id)
+            add_interactions_to_video_interactions_table(
+                db, video_pk, video_data)
 
             db.commit()
         except:
@@ -105,14 +73,14 @@ def seed_db():
         cid += 0.5
 
 
-@click.command('init-db')
+@ click.command('init-db')
 def init_db_command():
     """Clear the existing data and create new empty tables."""
     init_db()
     click.echo('Initialized the database.')
 
 
-@click.command('seed-db')
+@ click.command('seed-db')
 def seed_db_command():
     """Clear the existing data and create new populated tables."""
     init_db()
