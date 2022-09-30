@@ -1,16 +1,19 @@
-import requests
-import os
-
 from flask import (
     Blueprint, request
 )
 
 from app.db import get_db
+from app.utils.api import fetch_video_data
+from app.utils.db import (
+    add_interactions_to_video_interactions_table,
+    add_video_to_videos_table,
+    get_pk_from_channels_table,
+    get_pk_from_videos_table_by_video_id)
 
 bp = Blueprint('video', __name__, url_prefix='/video')
 
 
-@bp.route('/fetch', methods=['POST'])
+@ bp.route('/fetch', methods=['POST'])
 def fetch():
     args = request.args
     video_id = args.get('videoId')
@@ -18,36 +21,19 @@ def fetch():
     if video_id is None:
         return 'videoId is a required query parameter.', 400
 
-    key = os.environ.get('YOUTUBE_API_KEY')
     db = get_db()
 
     try:
-        r = requests.get(
-            f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2Cid%2CcontentDetails%2Cstatistics&id={video_id}&key={key}')
-        body = r.json()['items'][0]
+        video_data = fetch_video_data(video_id)
+        channel_id = get_pk_from_channels_table(
+            db, video_data['youtube_channel_id'])
+        add_video_to_videos_table(db, channel_id, video_id, video_data)
 
-        youtube_channel_id = body['snippet']['channelId']
-        url = f'https://www.youtube.com/watch?v={video_id}'
-        title = body['snippet']['title']
-        view_count = body['statistics']['viewCount']
-        like_count = body['statistics']['likeCount']
-        comment_count = body['statistics']['commentCount']
-        duration = body['contentDetails']['duration']
-        image_url = body['snippet']['thumbnails']['default']['url']
-        published_date = body['snippet']['publishedAt']
+        video_pk = get_pk_from_videos_table_by_video_id(db, video_id)
+        add_interactions_to_video_interactions_table(db, video_pk, video_data)
 
-        channel_row = db.execute(
-            'SELECT id FROM channels WHERE channel_id = ?', (youtube_channel_id,)).fetchone()
-
-        channel_id = channel_row[0] if channel_row is not None else 0
-
-        db.execute(
-            "INSERT INTO videos (channel_id, video_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date, latest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (channel_id, video_id, url, title, view_count, like_count,
-             comment_count, duration, image_url, published_date, 1),
-        )
         db.commit()
 
-        return f'Video data added to the database for {title}.'
+        return 'Video data added to the database.'
     except:
         return 'Video data could not be added to the database.', 500
