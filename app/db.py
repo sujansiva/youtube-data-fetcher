@@ -84,10 +84,20 @@ def seed_db():
             published_date = body['snippet']['publishedAt']
 
             db.execute(
-                "INSERT INTO videos (channel_id, video_id, url, title, view_count, like_count, comment_count, duration, image_url, published_date, latest) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (channel_id, video_id, url, title, view_count, like_count,
-                 comment_count, duration, image_url, published_date, 1),
+                "INSERT INTO videos (channel_id, video_id, url, title, duration, image_url, published_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (channel_id, video_id, url, title,
+                 duration, image_url, published_date),
             )
+
+            video_result = db.execute(
+                'SELECT id FROM videos where video_id = ?', (video_id,)).fetchone()
+            video_pk = video_result[0]
+
+            db.execute(
+                "INSERT INTO video_interactions (video_id, view_count, like_count, comment_count, latest) VALUES (?, ?, ?, ?, ?)",
+                (video_pk, view_count, like_count, comment_count, 1),
+            )
+
             db.commit()
         except:
             return f'Could not insert data for {video_id} into the database.'
