@@ -40,3 +40,5 @@ CREATE TABLE video_interactions (
 CREATE INDEX idx_channels_channel_id ON channels (channel_id);
 
 CREATE INDEX idx_videos_channel_id ON videos (channel_id);
+
+CREATE INDEX idx_video_interactions_video_id_latest ON video_interactions (video_id, latest);
